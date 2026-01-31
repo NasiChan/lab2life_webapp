@@ -1,0 +1,211 @@
+UX behavior (what the user experiences)
+On first login (or first visit after account creation)
+
+App checks: healthProfileStatus.isComplete
+
+If false, show an onboarding modal/page:
+
+“Add basic health info (optional)”
+
+Buttons:
+
+Save
+
+Skip for now
+
+If they skip, you still set something like healthProfileStatus.skippedAt = now, so you can:
+
+stop nagging every time, and/or
+
+gently remind later (optional).
+
+Later
+
+A Profile / Settings page where they can:
+
+Edit anytime
+
+Fill missing fields anytime
+
+Mark it complete automatically when required fields are present
+
+2) Data model (simple + flexible)
+In your User schema
+/**
+ * @typedef {Object} HealthProfile
+ * @property {number=} age
+ * @property {string=} sex  // or gender, depending on your wording
+ * @property {number=} heightCm
+ * @property {number=} weightKg
+ * @property {string[]=} allergies
+ * @property {string[]=} conditions
+ * @property {string[]=} medications
+ * @property {"low"|"moderate"|"high"=} activityLevel
+ */
+
+/**
+ * @typedef {Object} HealthProfileStatus
+ * @property {boolean} isComplete
+ * @property {string=} skippedAt  // ISO date string
+ * @property {string=} lastUpdated // ISO date string
+ */
+
+
+And store:
+
+user.healthProfile (partial allowed)
+
+user.healthProfileStatus
+
+How to decide “complete”?
+Keep it lightweight: e.g. require only age, heightCm, weightKg (or whatever you want). Everything else optional.
+
+3) Backend API (JWT) — recommended
+Routes
+
+GET /api/me → returns user profile + healthProfile + status
+
+PATCH /api/me/health-profile → saves partial updates (supports “fill later”)
+
+Example Express route
+/**
+ * PATCH /api/me/health-profile
+ * Updates the logged-in user's health profile (partial allowed).
+ *
+ * @preconditions
+ * - User is authenticated via JWT middleware
+ * - req.user.id exists
+ *
+ * @postconditions
+ * - user.healthProfile is merged with provided fields
+ * - healthProfileStatus.lastUpdated set
+ * - healthProfileStatus.isComplete recomputed
+ */
+app.patch("/api/me/health-profile", requireAuth, async (req, res) => {
+  const updates = req.body; // validate this (zod/joi) in real code
+
+  // Example "complete" rule:
+  const computeComplete = (hp) =>
+    typeof hp.age === "number" &&
+    typeof hp.heightCm === "number" &&
+    typeof hp.weightKg === "number";
+
+  const user = await User.findById(req.user.id);
+  if (!user) return res.status(404).json({ error: "User not found" });
+
+  user.healthProfile = { ...(user.healthProfile || {}), ...updates };
+
+  user.healthProfileStatus = user.healthProfileStatus || { isComplete: false };
+  user.healthProfileStatus.lastUpdated = new Date().toISOString();
+  user.healthProfileStatus.isComplete = computeComplete(user.healthProfile);
+
+  // If they started filling, optionally clear skippedAt
+  if (user.healthProfileStatus.skippedAt) user.healthProfileStatus.skippedAt = undefined;
+
+  await user.save();
+  return res.json({
+    healthProfile: user.healthProfile,
+    healthProfileStatus: user.healthProfileStatus,
+  });
+});
+
+“Skip for now” endpoint (optional)
+/**
+ * POST /api/me/health-profile/skip
+ * Records that the user skipped onboarding for now.
+ *
+ * @postconditions
+ * - healthProfileStatus.skippedAt is set
+ * - healthProfileStatus.isComplete remains unchanged
+ */
+app.post("/api/me/health-profile/skip", requireAuth, async (req, res) => {
+  const user = await User.findById(req.user.id);
+  if (!user) return res.status(404).json({ error: "User not found" });
+
+  user.healthProfileStatus = user.healthProfileStatus || { isComplete: false };
+  user.healthProfileStatus.skippedAt = new Date().toISOString();
+
+  await user.save();
+  return res.json({ healthProfileStatus: user.healthProfileStatus });
+});
+
+4) Frontend logic (works with plain JS or React)
+Decision logic after login
+/**
+ * Decide whether to show the health onboarding prompt.
+ *
+ * @param {{ healthProfileStatus?: { isComplete?: boolean, skippedAt?: string } }} me
+ * @returns {boolean} true if we should show onboarding now
+ *
+ * @preconditions
+ * - `me` is the response from GET /api/me
+ *
+ * @postconditions
+ * - no side effects
+ */
+function shouldShowHealthOnboarding(me) {
+  const status = me.healthProfileStatus || {};
+  if (status.isComplete) return false;
+
+  // If they skipped before, you can choose:
+  // A) never auto-show again (only in settings)
+  // B) show again after X days
+  if (status.skippedAt) return false;
+
+  return true;
+}
+
+If you want “remind me later” (after 7 days)
+/**
+ * @param {string} iso
+ * @param {number} days
+ * @returns {boolean}
+ */
+function isOlderThanDays(iso, days) {
+  const then = new Date(iso).getTime();
+  const now = Date.now();
+  const diffDays = (now - then) / (1000 * 60 * 60 * 24);
+  return diffDays >= days;
+}
+
+/**
+ * Show onboarding again if skipped more than N days ago.
+ *
+ * @param {{ healthProfileStatus?: { isComplete?: boolean, skippedAt?: string } }} me
+ * @param {number} days
+ * @returns {boolean}
+ */
+function shouldShowHealthOnboardingWithReminder(me, days = 7) {
+  const status = me.healthProfileStatus || {};
+  if (status.isComplete) return false;
+  if (!status.skippedAt) return true;
+  return isOlderThanDays(status.skippedAt, days);
+}
+
+5) If you DON’T have a backend yet (localStorage version)
+
+Store:
+
+healthProfile under a user-specific key (ex: healthProfile:<userId>)
+
+healthProfileStatus similarly
+
+This still supports:
+
+first-time prompt
+
+edit later
+
+skip
+
+(Backend is better if you want cross-device + real profiles.)
+
+6) Important privacy note (since it’s “health info”)
+
+Keep it minimal and optional, and avoid storing anything you don’t actually need. Also:
+
+don’t log these fields in server logs
+
+protect endpoints with JWT
+
+don’t expose it in places you don’t need (e.g., public user profiles)

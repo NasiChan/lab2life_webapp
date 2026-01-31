@@ -1,0 +1,120 @@
+Lab2Life — Health Management
+
+Pillar: Empowerment (with sustainability-friendly habits as a bonus)
+
+Lab2Life turns confusing bloodwork and medical documents into a simple, personalized action plan. Users upload lab results, and the app extracts key vitamin and nutrient metrics, then suggests safe next steps: supplements, food choices, and lightweight physical wellness habits—plus scheduling and interaction checks to reduce risk.
+
+What it does
+Main Features
+
+1) Bloodwork & Documentation Scanner
+
+Upload lab results (PDF/image)
+
+OCR + Gemini extracts key markers (focused on vitamins/nutrients)
+
+Manual input available for accessibility and accuracy
+
+2) Vitamin & Supplement Recommendations
+
+Suggests supplements based on deficiencies found in labs
+
+Shows dosage ranges and why it’s recommended
+
+Links recommendations to reputable sources (ex: clinical guidelines / health orgs)
+
+3) Dietary Recommendations
+
+Suggests foods rich in the nutrients the user is low on
+
+Simple “easy swaps” (e.g., “add this to breakfast”)
+
+4) Physical Health Recommendations
+
+Suggests gentle, realistic activity options (based on goals + energy level)
+
+Focus on “small wins,” not intense workouts
+
+Secondary Features
+
+5) Medication Upload
+
+Add medications manually or by scanning
+
+Track dosage + frequency
+
+6) Scheduling + Reminders
+
+Suggests best timing for supplements (ex: morning vs evening, with/without food)
+
+Built-in reminders for daily intake
+
+7) Conflict & Interaction Checks
+
+Flags potential medication–supplement interactions
+
+Explains clearly what conflicts, why, and what to ask a pharmacist/doctor
+
+Safety note (important for judges): Lab2Life does not diagnose or replace medical advice—it helps users understand their data and prepares them to make informed choices with healthcare professionals.
+
+Tech Stack (simple + impressive)
+
+Frontend: React
+
+Styling: Tailwind CSS
+
+Document processing: Gemini (extract structured metrics + summarize recommendations)
+
+(Optional add-ons if you want): MongoDB Atlas for profiles/history, ElevenLabs for read-aloud accessibility
+
+Icon direction
+
+Primary icon: pill bottle with a small sparkle/checkmark
+Secondary icon: single capsule split into two colors (clean + modern)
+
+App icon concept:
+
+Rounded square background
+
+Minimal pill bottle outline
+
+2 small pills + one “scan” corner bracket to hint “document scanning”
+
+Color Palette (3 strong options)
+Palette A — Clean Clinical (most “health app”)
+
+Primary: Deep Teal #0F766E
+
+Secondary: Soft Mint #A7F3D0
+
+Accent: Sky #38BDF8
+
+Background: Off-white #F8FAFC
+
+Text: Slate #0F172A
+
+Palette B — Friendly Wellness (warm + calming)
+
+Primary: Indigo #4F46E5
+
+Secondary: Lavender #C4B5FD
+
+Accent: Peach #FDBA74
+
+Background: Warm White #FFFBF5
+
+Text: Charcoal #111827
+
+Palette C — Minimal Modern (premium)
+
+Primary: Near Black #0B1220
+
+Secondary: Cool Gray #94A3B8
+
+Accent: Lime #A3E635
+
+Background: Gray Mist #F1F5F9
+
+Text: #0F172A
+
+If you want it to feel “medical + trustworthy,” go Palette A. If you want “supportive + approachable,” go Palette B.

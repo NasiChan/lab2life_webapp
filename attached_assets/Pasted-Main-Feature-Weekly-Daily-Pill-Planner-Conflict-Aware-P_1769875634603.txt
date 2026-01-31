@@ -1,0 +1,133 @@
+Main Feature: Weekly + Daily Pill Planner (Conflict-Aware)
+Pill Timeline (Daily View)
+
+A simple timeline that shows exactly what to take and when:
+
+Morning
+
+Midday
+
+Evening
+
+Bedtime
+
+Each pill card shows:
+
+Name + dose
+
+“With food / Empty stomach” tag
+
+“Must be separated from ___” tag (if any)
+
+One-line “why” explanation
+
+Taken / Snooze buttons
+
+Weekly Schedule (Weekly View)
+
+A calendar-style grid showing:
+
+Days of the week across the top
+
+Time blocks down the side (Morning / Midday / Evening / Bedtime)
+
+Pills placed into blocks (tap for details)
+
+This helps users:
+
+Spot missed doses
+
+See patterns (“I always forget the afternoon one”)
+
+Plan ahead (travel, busy days)
+
+Conflict Prevention + “Allowed Together” Groups
+Conflict-Aware Scheduling
+
+When the user adds a new pill (med or supplement), Lab2Life checks:
+
+Known conflicts (separate)
+
+Preferred pairs (okay together)
+
+Food rules (with food vs empty stomach)
+
+User prescription timing (never override)
+
+Then it either:
+
+Auto-schedules it into the best time block, or
+
+Prompts: “This should be taken 2 hours apart from Calcium. Pick a time.”
+
+Together vs Separate rules (simple UX)
+
+Use clear labels:
+
+✅ Safe together
+
+⏱️ Separate by 2 hours
+
+⚠️ Avoid together (strong warning + explanation)
+
+Example of “meant to be taken together”
+
+Sometimes combinations are intentional (ex: certain supplements taken with meals, or multi-vitamins).
+So your app should support:
+
+Stacks (Pill Groups)
+
+A “stack” is a set of pills taken at the same time:
+
+Morning Stack: Vitamin D + Omega-3 (with food)
+
+Evening Stack: Magnesium (bedtime)
+
+Users can create stacks manually, and the app can suggest them when safe.
+
+What happens when there’s a conflict (best UX flow)
+
+When the user tries to schedule something that conflicts:
+
+Popup:
+“Potential conflict detected”
+
+Iron should be separated from calcium by ~2 hours because calcium can reduce iron absorption.
+Options:
+
+Auto-fix schedule
+
+Let me choose times
+
+I’m taking these together on purpose (requires confirming + shows caution)
+
+This last option is exactly your “unless meant to be taken together” requirement.
+
+Data model idea (simple, but powerful)
+
+Each “pill item” has:
+
+name
+
+type: medication | supplement
+
+dose
+
+frequency: daily / specific days / x times per day
+
+timeBlock: morning/midday/evening/bedtime or exact time
+
+foodRule: with_food | empty_stomach | either
+
+separationRules: list of { otherPill, minutesApart, reason }
+
+allowedTogetherWith: list of pill names (optional)
+
+userOverride: true/false
+
+This makes your “conflict-aware weekly planner” actually implementable.
+
+Super short write-up you can paste in your feature list
+
+Weekly/Daily Pill Planner:
+“Lab2Life provides a daily timeline and weekly calendar view of all medications and supplements. It auto-schedules vitamins into optimal time blocks (with/without food) and prevents conflicts by warning users and spacing doses—while allowing intentional ‘stack’ groups when pills are safe or meant to be taken togethe
