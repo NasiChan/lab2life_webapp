@@ -88,9 +88,13 @@ app.use((req, res, next) => {
     return res.status(status).json({ message });
   });
 
-  // Serve static in production; Vite dev server otherwise
+  const shouldServeStatic = process.env.SERVE_STATIC === "true";
+
+  // Serve static only if explicitly enabled; otherwise API-only (good for Vercel frontend)
   if (process.env.NODE_ENV === "production") {
-    serveStatic(app);
+    if (shouldServeStatic) {
+      serveStatic(app);
+    }
   } else {
     const { setupVite } = await import("./vite");
     await setupVite(httpServer, app);
@@ -98,7 +102,9 @@ app.use((req, res, next) => {
 
   // Windows-safe listen (no object-form, no reusePort)
   const port = Number.parseInt(process.env.PORT || "5000", 10);
-  const host = process.env.HOST || "127.0.0.1"; // use 0.0.0.0 only when you actually need LAN access
+  const host =
+    process.env.HOST ||
+    (process.env.NODE_ENV === "production" ? "0.0.0.0" : "127.0.0.1");
 
   httpServer.listen(port, host, () => {
     log(`serving on http://${host}:${port}`);
