@@ -61,16 +61,20 @@ The Pill Planner (`/planner`) is a mobile-first daily/weekly medication and supp
 
 ### 🗂️ Project Structure
 
-├── client/src/ # React frontend
-│ ├── components/ # UI components (shadcn/ui)
-│ ├── pages/ # Route pages
-│ ├── hooks/ # Custom React hooks
-│ └── lib/ # Utilities and query client
-├── server/ # Express backend
-│ ├── replit_integrations/ # AI integration modules
-│ └── routes.ts # API route definitions
-├── shared/ # Shared types and schema
-└── migrations/ # Database migrations
+### Project Structure
+```
+├── client/src/          # React frontend
+│   ├── components/      # UI components (shadcn/ui)
+│   ├── pages/           # Route pages
+│   ├── hooks/           # Custom React hooks
+│   └── lib/             # Utilities and query client
+├── server/              # Express backend
+│   ├── replit_integrations/  # AI integration modules
+│   └── routes.ts        # API route definitions
+├── shared/              # Shared types and schema
+└── migrations/          # Database migrations
+```
+
 
 ### ⚙️ Build System
 - Development: tsx for server, Vite dev server for client  
