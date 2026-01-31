@@ -60,6 +60,7 @@ The Pill Planner (`/planner`) is a mobile-first daily/weekly medication and supp
 - **Food Rules**: Tags indicating whether to take with food 🍽️ or on an empty stomach  
 
 ### 🗂️ Project Structure
+
 ├── client/src/ # React frontend
 │ ├── components/ # UI components (shadcn/ui)
 │ ├── pages/ # Route pages
