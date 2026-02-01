@@ -17,6 +17,7 @@ export async function apiRequest(
     headers: data ? { "Content-Type": "application/json" } : {},
     body: data ? JSON.stringify(data) : undefined,
     credentials: "include",
+    cache: "no-store", 
   });
 
   await throwIfResNotOk(res);
@@ -31,10 +32,11 @@ export const getQueryFn: <T>(options: {
   async ({ queryKey }) => {
     const res = await fetch(queryKey.join("/") as string, {
       credentials: "include",
+      cache: "no-store", 
     });
 
     if (unauthorizedBehavior === "returnNull" && res.status === 401) {
-      return null;
+        return null;
     }
 
     await throwIfResNotOk(res);
@@ -46,8 +48,8 @@ export const queryClient = new QueryClient({
     queries: {
       queryFn: getQueryFn({ on401: "throw" }),
       refetchInterval: false,
-      refetchOnWindowFocus: false,
-      staleTime: Infinity,
+      refetchOnWindowFocus: true, 
+      staleTime: 0,               
       retry: false,
     },
     mutations: {
