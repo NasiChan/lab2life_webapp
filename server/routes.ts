@@ -170,18 +170,26 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
       // 3) Save markers + recommendations (your existing code)
       for (const marker of extractedData.markers) {
+        const valueNum = toNumericStringOrNull(marker.value);
+
+        // If Gemini didn't give a valid number, skip inserting this marker
+        if (valueNum === null) {
+          console.warn("Skipping marker with non-numeric value:", marker.name, marker.value);
+          continue;
+        }
+
         await storage.createHealthMarker({
           labResultId,
           name: marker.name,
-          value: toNumericStringOrNull(marker.value) ?? "",
+          value: valueNum, // ✅ numeric string
           unit: marker.unit,
           normalMin: toNumericStringOrNull(marker.normalMin),
           normalMax: toNumericStringOrNull(marker.normalMax),
           status: marker.status,
           category: marker.category,
         });
-
       }
+
 
       for (const rec of extractedData.recommendations) {
         await storage.createRecommendation({
