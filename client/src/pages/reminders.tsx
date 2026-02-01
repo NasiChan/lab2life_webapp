@@ -223,46 +223,51 @@ function ReminderForm({
         </div>
 
         <FormField
-          control={form.control}
-          name="days"
-          render={() => (
-            <FormItem>
-              <FormLabel>Days of the Week</FormLabel>
-              <div className="flex flex-wrap gap-2">
-                {days.map((day) => (
-                  <FormField
-                    key={day.value}
-                    control={form.control}
-                    name="days"
-                    render={({ field }) => {
-                      return (
-                        <FormItem key={day.value}>
-                          <FormControl>
-                            <label className="flex items-center gap-2 cursor-pointer">
-                              <Checkbox
-                                checked={field.value?.includes(day.value)}
-                                onCheckedChange={(checked) => {
-                                  return checked
-                                    ? field.onChange([...field.value, day.value])
-                                    : field.onChange(
-                                        field.value?.filter((value) => value !== day.value)
-                                      );
-                                }}
-                                data-testid={`checkbox-day-${day.value}`}
-                              />
-                              <span className="text-sm">{day.label}</span>
-                            </label>
-                          </FormControl>
-                        </FormItem>
-                      );
+  control={form.control}
+  name="days"
+  render={({ field }) => (
+
+    <FormItem>
+      <FormLabel>Days of the Week</FormLabel>
+
+      <div className="flex flex-wrap gap-2">
+        {days.map((day) => {
+          const checked = field.value?.includes(day.value);
+
+          return (
+            <FormItem
+              key={day.value}
+              className="flex items-center gap-2"
+            >
+              <FormControl>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <Checkbox
+                    checked={checked}
+                    onCheckedChange={(isChecked: boolean) => {
+                      if (isChecked) {
+                        field.onChange([...(field.value ?? []), day.value]);
+                      } else {
+                        field.onChange(
+                          (field.value ?? []).filter((value) => value !== day.value)
+                        );
+                      }
                     }}
+                    data-testid={`checkbox-day-${day.value}`}
                   />
-                ))}
-              </div>
-              <FormMessage />
+                  <span className="text-sm">{day.label}</span>
+                </label>
+              </FormControl>
             </FormItem>
-          )}
-        />
+          );
+        })}
+      </div>
+
+      <FormMessage />
+    </FormItem>
+
+
+  )}
+/>
 
         <DialogFooter>
           <Button type="button" variant="outline" onClick={onCancel}>
