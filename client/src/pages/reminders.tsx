@@ -38,6 +38,9 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Clock, Plus, Edit, Trash2, Bell, BellOff, Pill, Apple, Dumbbell } from "lucide-react";
+import { useReminderNotifications } from "@/hooks/use-reminder-notifs";
+
+
 
 const days = [
   { value: "monday", label: "Mon" },
@@ -290,6 +293,8 @@ export default function Reminders() {
   const { data: reminders, isLoading } = useQuery<Reminder[]>({
     queryKey: ["/api/reminders"],
   });
+
+useReminderNotifications(reminders); 
 
   const createMutation = useMutation({
     mutationFn: async (values: ReminderFormValues) => {
