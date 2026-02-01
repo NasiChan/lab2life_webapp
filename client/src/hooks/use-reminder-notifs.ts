@@ -15,6 +15,7 @@ export function useReminderNotifications(reminders: Reminder[] | undefined) {
     }
 
     const checkReminders = () => {
+    console.log("HOOK IS RUNNING");
       if (Notification.permission !== "granted") return;
 
       const now = new Date();
@@ -22,11 +23,17 @@ export function useReminderNotifications(reminders: Reminder[] | undefined) {
       const currentDay = days[now.getDay()];
       const todayKey = now.toISOString().split("T")[0]; // YYYY-MM-DD
 
+
+      console.log("Current time:", currentTime, "Current day:", currentDay);
+
       reminders.forEach((reminder) => {
         if (!reminder.enabled) return;
 
         const reminderDays = (reminder.days as string[]) || [];
         const key = `${reminder.id}-${todayKey}`;
+
+        console.log("Checking reminder:", reminder.title, "| time:", reminder.time, "| days:", reminderDays, "| fired?", firedToday.current.has(key));
+
 
         if (
           reminder.time === currentTime &&
