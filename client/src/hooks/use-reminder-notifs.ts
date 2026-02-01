@@ -24,8 +24,6 @@ export function useReminderNotifications(reminders: Reminder[] | undefined) {
 
       reminders.forEach((reminder) => {
         if (!reminder.enabled) return;
-        new Notification("Test", { body: "This is a test notification" });
-
         const reminderDays = (reminder.days as string[]) || [];
         const key = `${reminder.id}-${todayKey}`;
 
