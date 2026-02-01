@@ -1,10 +1,22 @@
 import { GoogleGenAI } from "@google/genai";
 
+const apiKey =
+  process.env.AI_INTEGRATIONS_GEMINI_API_KEY ||
+  process.env.GEMINI_API_KEY ||
+  process.env.GOOGLE_API_KEY;
+
+if (!apiKey) {
+  throw new Error("Missing Gemini API key (set AI_INTEGRATIONS_GEMINI_API_KEY or GEMINI_API_KEY)");
+}
+
+const apiVersion = process.env.AI_INTEGRATIONS_GEMINI_API_VERSION || "v1beta";
+const baseUrl = process.env.AI_INTEGRATIONS_GEMINI_BASE_URL;
+
 const ai = new GoogleGenAI({
-  apiKey: process.env.AI_INTEGRATIONS_GEMINI_API_KEY,
+  apiKey,
   httpOptions: {
-    apiVersion: "",
-    baseUrl: process.env.AI_INTEGRATIONS_GEMINI_BASE_URL,
+    apiVersion,
+    ...(baseUrl ? { baseUrl } : {}),
   },
 });
 

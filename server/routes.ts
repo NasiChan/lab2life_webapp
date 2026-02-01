@@ -1,3 +1,5 @@
+import { PDFParse } from "pdf-parse";
+
 import type { Express, Request, Response } from "express";
 import type { Server } from "http";
 import multer from "multer";
@@ -109,7 +111,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
         });
 
         // Fire-and-forget processing (do not block response)
-        void processLabResult(labResult.id, req.file.buffer.toString("utf-8"));
+        void processLabResult(labResult.id, req.file.buffer);
 
         res.status(201).json(labResult);
       } catch (error) {
@@ -130,44 +132,59 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
    * Postconditions:
    * - Updates lab result status to completed or error.
    */
-  async function processLabResult(labResultId: number, rawText: string) {
-    try {
-      const extractedData = await extractLabData(rawText);
+  function sanitizeForPostgresText(value: unknown) {
+  if (value == null) return null;
+  return String(value).replace(/\u0000/g, "");
+}
 
-      for (const marker of extractedData.markers) {
-        await storage.createHealthMarker({
-          labResultId,
-          name: marker.name,
-          value: String(marker.value),
-          unit: marker.unit,
-          normalMin: String(marker.normalMin),
-          normalMax: String(marker.normalMax),
-          status: marker.status,
-          category: marker.category,
-        });
-      }
+async function processLabResult(labResultId: number, fileBuffer: Buffer) {
+  try {
+    // 1) Extract real text from the PDF
+    const parser = new PDFParse({ data: fileBuffer });
+const parsed = await parser.getText();
+await parser.destroy();
 
-      for (const rec of extractedData.recommendations) {
-        await storage.createRecommendation({
-          labResultId,
-          type: rec.type,
-          title: rec.title,
-          description: rec.description,
-          priority: rec.priority,
-          relatedMarker: rec.relatedMarker,
-          actionItems: rec.actionItems,
-        });
-      }
+const rawText = sanitizeForPostgresText(parsed.text) ?? "";
+    // 2) Send extracted text to Gemini
+    const extractedData = await extractLabData(rawText);
 
-      await storage.updateLabResult(labResultId, {
-        status: "completed",
-        rawText,
+    // 3) Save markers + recommendations (your existing code)
+    for (const marker of extractedData.markers) {
+      await storage.createHealthMarker({
+        labResultId,
+        name: marker.name,
+        value: String(marker.value),
+        unit: marker.unit,
+        normalMin: String(marker.normalMin),
+        normalMax: String(marker.normalMax),
+        status: marker.status,
+        category: marker.category,
       });
-    } catch (error) {
-      console.error("Error processing lab result:", error);
-      await storage.updateLabResult(labResultId, { status: "error" });
     }
+
+    for (const rec of extractedData.recommendations) {
+      await storage.createRecommendation({
+        labResultId,
+        type: rec.type,
+        title: rec.title,
+        description: rec.description,
+        priority: rec.priority,
+        relatedMarker: rec.relatedMarker,
+        actionItems: rec.actionItems,
+      });
+    }
+
+    // 4) Store rawText safely (no \u0000)
+    await storage.updateLabResult(labResultId, {
+      status: "completed",
+      rawText,
+    });
+  } catch (error) {
+    console.error("Error processing lab result:", error);
+    await storage.updateLabResult(labResultId, { status: "error" });
   }
+}
+
 
   app.delete("/api/lab-results/:id", async (req: Request, res: Response) => {
     try {
