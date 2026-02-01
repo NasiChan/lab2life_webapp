@@ -133,57 +133,78 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
    * - Updates lab result status to completed or error.
    */
   function sanitizeForPostgresText(value: unknown) {
-  if (value == null) return null;
-  return String(value).replace(/\u0000/g, "");
-}
-
-async function processLabResult(labResultId: number, fileBuffer: Buffer) {
-  try {
-    // 1) Extract real text from the PDF
-    const parser = new PDFParse({ data: fileBuffer });
-const parsed = await parser.getText();
-await parser.destroy();
-
-const rawText = sanitizeForPostgresText(parsed.text) ?? "";
-    // 2) Send extracted text to Gemini
-    const extractedData = await extractLabData(rawText);
-
-    // 3) Save markers + recommendations (your existing code)
-    for (const marker of extractedData.markers) {
-      await storage.createHealthMarker({
-        labResultId,
-        name: marker.name,
-        value: String(marker.value),
-        unit: marker.unit,
-        normalMin: String(marker.normalMin),
-        normalMax: String(marker.normalMax),
-        status: marker.status,
-        category: marker.category,
-      });
-    }
-
-    for (const rec of extractedData.recommendations) {
-      await storage.createRecommendation({
-        labResultId,
-        type: rec.type,
-        title: rec.title,
-        description: rec.description,
-        priority: rec.priority,
-        relatedMarker: rec.relatedMarker,
-        actionItems: rec.actionItems,
-      });
-    }
-
-    // 4) Store rawText safely (no \u0000)
-    await storage.updateLabResult(labResultId, {
-      status: "completed",
-      rawText,
-    });
-  } catch (error) {
-    console.error("Error processing lab result:", error);
-    await storage.updateLabResult(labResultId, { status: "error" });
+    if (value == null) return null;
+    return String(value).replace(/\u0000/g, "");
   }
-}
+  function toNumericStringOrNull(value: unknown): string | null {
+    if (value === null || value === undefined) return null;
+
+    if (typeof value === "number") {
+      return Number.isFinite(value) ? String(value) : null;
+    }
+
+    if (typeof value === "string") {
+      const trimmed = value.trim();
+      if (!trimmed) return null;
+
+      const lower = trimmed.toLowerCase();
+      if (lower === "null" || lower === "undefined" || lower === "nan") return null;
+
+      const n = Number(trimmed);
+      return Number.isFinite(n) ? String(n) : null;
+    }
+
+    return null;
+  }
+
+  async function processLabResult(labResultId: number, fileBuffer: Buffer) {
+    try {
+      // 1) Extract real text from the PDF
+      const parser = new PDFParse({ data: fileBuffer });
+      const parsed = await parser.getText();
+      await parser.destroy();
+
+      const rawText = sanitizeForPostgresText(parsed.text) ?? "";
+      // 2) Send extracted text to Gemini
+      const extractedData = await extractLabData(rawText);
+
+      // 3) Save markers + recommendations (your existing code)
+      for (const marker of extractedData.markers) {
+        await storage.createHealthMarker({
+          labResultId,
+          name: marker.name,
+          value: toNumericStringOrNull(marker.value) ?? "",
+          unit: marker.unit,
+          normalMin: toNumericStringOrNull(marker.normalMin),
+          normalMax: toNumericStringOrNull(marker.normalMax),
+          status: marker.status,
+          category: marker.category,
+        });
+
+      }
+
+      for (const rec of extractedData.recommendations) {
+        await storage.createRecommendation({
+          labResultId,
+          type: rec.type,
+          title: rec.title,
+          description: rec.description,
+          priority: rec.priority,
+          relatedMarker: rec.relatedMarker,
+          actionItems: rec.actionItems,
+        });
+      }
+
+      // 4) Store rawText safely (no \u0000)
+      await storage.updateLabResult(labResultId, {
+        status: "completed",
+        rawText,
+      });
+    } catch (error) {
+      console.error("Error processing lab result:", error);
+      await storage.updateLabResult(labResultId, { status: "error" });
+    }
+  }
 
 
   app.delete("/api/lab-results/:id", async (req: Request, res: Response) => {
@@ -244,16 +265,20 @@ const rawText = sanitizeForPostgresText(parsed.text) ?? "";
       const id = requireIntParam(req, res, "id");
       if (id === undefined) return;
 
-      const medication = await storage.updateMedication(id, req.body);
-      if (!medication) {
-        return res.status(404).json({ error: "Medication not found" });
-      }
+      const updateData: Record<string, unknown> = { ...(req.body as Record<string, unknown>) };
+      delete updateData.id;
+      delete updateData.createdAt; // <-- IMPORTANT
+
+      const medication = await storage.updateMedication(id, updateData);
+      if (!medication) return res.status(404).json({ error: "Medication not found" });
+
       res.json(medication);
     } catch (error) {
-      console.error("Error updating medication:", error);
+      console.error("Error updating medication:", error, "BODY:", req.body);
       res.status(500).json({ error: "Failed to update medication" });
     }
   });
+
 
   app.delete("/api/medications/:id", async (req: Request, res: Response) => {
     try {
@@ -300,16 +325,20 @@ const rawText = sanitizeForPostgresText(parsed.text) ?? "";
       const id = requireIntParam(req, res, "id");
       if (id === undefined) return;
 
-      const supplement = await storage.updateSupplement(id, req.body);
-      if (!supplement) {
-        return res.status(404).json({ error: "Supplement not found" });
-      }
+      const updateData: Record<string, unknown> = { ...(req.body as Record<string, unknown>) };
+      delete updateData.id;
+      delete updateData.createdAt; // <-- IMPORTANT
+
+      const supplement = await storage.updateSupplement(id, updateData);
+      if (!supplement) return res.status(404).json({ error: "Supplement not found" });
+
       res.json(supplement);
     } catch (error) {
-      console.error("Error updating supplement:", error);
+      console.error("Error updating supplement:", error, "BODY:", req.body);
       res.status(500).json({ error: "Failed to update supplement" });
     }
   });
+
 
   app.delete("/api/supplements/:id", async (req: Request, res: Response) => {
     try {
