@@ -266,14 +266,20 @@ function UploadSection() {
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/lab-results"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/health-markers"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/recommendations"] });
-      toast({
-        title: "Upload successful",
-        description: "Your lab results are being processed. This may take a moment.",
-      });
-    },
+  queryClient.invalidateQueries({ queryKey: ["/api/lab-results"] });
+  queryClient.invalidateQueries({ queryKey: ["/api/health-markers"] });
+  queryClient.invalidateQueries({ queryKey: ["/api/recommendations"] });
+
+  
+  queryClient.refetchQueries({ queryKey: ["/api/lab-results"] });
+  queryClient.refetchQueries({ queryKey: ["/api/health-markers"] });
+
+  toast({
+    title: "Upload successful",
+    description: "Your lab results are being processed. This may take a moment.",
+  });
+},
+
     onError: () => {
       toast({
         title: "Upload failed",
@@ -364,9 +370,18 @@ export default function LabResults() {
     queryKey: ["/api/lab-results"],
   });
 
-  const { data: markers, isLoading: loadingMarkers } = useQuery<HealthMarker[]>({
-    queryKey: ["/api/health-markers"],
-  });
+  const hasProcessing = (labResults ?? []).some((r) => r.status === "processing");
+
+const { data: markers, isLoading: loadingMarkers } = useQuery<HealthMarker[]>({
+  queryKey: ["/api/health-markers"],
+
+  
+  refetchInterval: hasProcessing ? 2000 : false,
+  refetchIntervalInBackground: true,
+  refetchOnWindowFocus: true,
+  staleTime: 0,
+});
+
 
   const deleteMutation = useMutation({
     mutationFn: async (id: number) => {
