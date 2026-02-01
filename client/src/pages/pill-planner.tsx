@@ -143,7 +143,7 @@ function PillCard({
             ) : isSnoozed ? (
               <Badge variant="secondary" className="gap-1">
                 <Timer className="h-3 w-3" />
-                Snoozed
+                Snoozed · 10 min
               </Badge>
             ) : (
               <>
@@ -473,11 +473,12 @@ export default function PillPlanner() {
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ["/api/pill-doses", formatDate(selectedDate)] });
+
       toast({
-        title: variables.status === "taken" ? "Marked as taken" : "Snoozed",
+        title: variables.status === "taken" ? "Marked as taken" : "Snoozed for 10 minutes",
         description: variables.status === "taken" 
           ? "Great job staying on track!" 
-          : "We'll remind you again soon.",
+          : "We'll notify you again in 10 minutes.",
       });
     },
   });
