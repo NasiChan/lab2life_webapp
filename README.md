@@ -1,4 +1,4 @@
-# 🧬 Lab2Life - Personal Health Management Platform
+# 🧬Lab2Life - Personal Health Management Platform
 
 Lab2Life is a personal health management platform that transforms bloodwork and medical documents into actionable health recommendations 💡.
 
