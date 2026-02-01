@@ -1,3 +1,4 @@
+// server/routes.ts
 import { PDFParse } from "pdf-parse";
 
 import type { Express, Request, Response } from "express";
@@ -95,48 +96,57 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
-  app.post(
-    "/api/lab-results/upload",
-    upload.single("file"),
-    async (req: Request, res: Response) => {
-      try {
-        if (!req.file) {
-          return res.status(400).json({ error: "No file uploaded" });
-        }
-
-        const labResult = await storage.createLabResult({
-          fileName: req.file.originalname,
-          status: "processing",
-          rawText: null,
-        });
-
-        // Fire-and-forget processing (do not block response)
-        void processLabResult(labResult.id, req.file.buffer);
-
-        res.status(201).json(labResult);
-      } catch (error) {
-        console.error("Error uploading lab result:", error);
-        res.status(500).json({ error: "Failed to upload lab result" });
+  app.post("/api/lab-results/upload", upload.single("file"), async (req: Request, res: Response) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({ error: "No file uploaded" });
       }
+
+      const labResult = await storage.createLabResult({
+        fileName: req.file.originalname,
+        status: "processing",
+        rawText: null,
+      });
+
+      // Fire-and-forget processing (do not block response)
+      void processLabResult(labResult.id, req.file.buffer);
+
+      res.status(201).json(labResult);
+    } catch (error) {
+      console.error("Error uploading lab result:", error);
+      res.status(500).json({ error: "Failed to upload lab result" });
     }
-  );
+  });
 
   /**
-   * Process a lab result asynchronously.
+   * Remove characters that Postgres text columns cannot store (notably the null byte \u0000).
    *
-   * @param labResultId - ID of the lab result record
-   * @param rawText - Extracted text from uploaded file
+   * @param value - Any value to be stored as text.
+   * @returns A safe string, or null if the input is null/undefined.
    *
    * Preconditions:
-   * - labResultId exists in storage.
+   * - value may be null/undefined or any type.
    * Postconditions:
-   * - Updates lab result status to completed or error.
+   * - Returned string contains no \u0000 characters.
    */
-  function sanitizeForPostgresText(value: unknown) {
+  function sanitizeForPostgresText(value: unknown): string | null {
     if (value == null) return null;
     return String(value).replace(/\u0000/g, "");
   }
-  function toNumericStringOrNull(value: unknown): string | null {
+
+  /**
+   * Extract the first numeric token from a value and return it as a numeric string.
+   * Handles common lab formats like "<1", ">120", "120-160", and "0 /100 WBC".
+   *
+   * @param value - Raw value (number | string | null | undefined | unknown).
+   * @returns A numeric string (e.g., "0.2") or null if no number is present.
+   *
+   * Preconditions:
+   * - value may be null/undefined or contain units/symbols.
+   * Postconditions:
+   * - Never returns ""/"null"/"undefined".
+   */
+  function extractFirstNumberStringOrNull(value: unknown): string | null {
     if (value === null || value === undefined) return null;
 
     if (typeof value === "number") {
@@ -144,76 +154,113 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
 
     if (typeof value === "string") {
-      const trimmed = value.trim();
-      if (!trimmed) return null;
+      const s = value.trim();
+      if (!s) return null;
 
-      const lower = trimmed.toLowerCase();
-      if (lower === "null" || lower === "undefined" || lower === "nan") return null;
+      const match = s.match(/-?\d+(?:\.\d+)?/);
+      if (!match) return null;
 
-      const n = Number(trimmed);
+      const n = Number(match[0]);
       return Number.isFinite(n) ? String(n) : null;
     }
 
     return null;
   }
 
+  /**
+   * Process a lab result asynchronously.
+   *
+   * @param labResultId - ID of the lab result record
+   * @param fileBuffer - Uploaded PDF buffer
+   *
+   * Preconditions:
+   * - labResultId exists in storage.
+   * - fileBuffer is the raw PDF bytes.
+   * Postconditions:
+   * - Updates lab result status to "completed" or "error".
+   * - Stores extracted rawText when possible (even on partial failure).
+   */
   async function processLabResult(labResultId: number, fileBuffer: Buffer) {
+    // Keep rawText outside the try so we can store it even if later steps fail.
+    let rawText = "";
+
     try {
       // 1) Extract real text from the PDF
       const parser = new PDFParse({ data: fileBuffer });
       const parsed = await parser.getText();
       await parser.destroy();
 
-      const rawText = sanitizeForPostgresText(parsed.text) ?? "";
+      rawText = sanitizeForPostgresText(parsed.text) ?? "";
+
       // 2) Send extracted text to Gemini
       const extractedData = await extractLabData(rawText);
 
-      // 3) Save markers + recommendations (your existing code)
+      // 3) Save markers (skip anything that can't be stored safely)
       for (const marker of extractedData.markers) {
-        const valueNum = toNumericStringOrNull(marker.value);
+        const name = sanitizeForPostgresText(marker.name) ?? "";
+        const unit = sanitizeForPostgresText(marker.unit);
+        const status = sanitizeForPostgresText(marker.status) ?? "unknown";
+        const category = sanitizeForPostgresText(marker.category) ?? "other";
 
-        // If Gemini didn't give a valid number, skip inserting this marker
+        // value is numeric in Postgres, so we must have a numeric string.
+        const valueNum = extractFirstNumberStringOrNull(marker.value);
         if (valueNum === null) {
-          console.warn("Skipping marker with non-numeric value:", marker.name, marker.value);
+          console.warn("Skipping marker (no numeric value):", name, marker.value);
           continue;
         }
 
-        await storage.createHealthMarker({
-          labResultId,
-          name: marker.name,
-          value: valueNum, // ✅ numeric string
-          unit: marker.unit,
-          normalMin: toNumericStringOrNull(marker.normalMin),
-          normalMax: toNumericStringOrNull(marker.normalMax),
-          status: marker.status,
-          category: marker.category,
-        });
+        const normalMinNum = extractFirstNumberStringOrNull(marker.normalMin);
+        const normalMaxNum = extractFirstNumberStringOrNull(marker.normalMax);
+
+        try {
+          await storage.createHealthMarker({
+            labResultId,
+            name,
+            value: valueNum, // ✅ never "" / "null"
+            unit,
+            normalMin: normalMinNum, // null or numeric string
+            normalMax: normalMaxNum, // null or numeric string
+            status,
+            category,
+          });
+        } catch (markerError) {
+          // Don't fail the entire PDF because one marker is malformed.
+          console.warn("Skipping marker (DB insert failed):", name, markerError);
+        }
       }
 
-
+      // 4) Save recommendations (sanitize strings so Postgres won't choke on null bytes)
       for (const rec of extractedData.recommendations) {
         await storage.createRecommendation({
           labResultId,
-          type: rec.type,
-          title: rec.title,
-          description: rec.description,
-          priority: rec.priority,
-          relatedMarker: rec.relatedMarker,
-          actionItems: rec.actionItems,
+          type: sanitizeForPostgresText(rec.type) ?? "general",
+          title: sanitizeForPostgresText(rec.title) ?? "",
+          description: sanitizeForPostgresText(rec.description) ?? "",
+          priority: sanitizeForPostgresText(rec.priority) ?? "low",
+          relatedMarker: sanitizeForPostgresText(rec.relatedMarker),
+          actionItems: Array.isArray(rec.actionItems)
+            ? rec.actionItems
+                .map((x) => sanitizeForPostgresText(x) ?? "")
+                .filter((x) => x.trim().length > 0)
+            : [],
         });
       }
 
-      // 4) Store rawText safely (no \u0000)
+      // 5) Store rawText + mark completed
       await storage.updateLabResult(labResultId, {
         status: "completed",
         rawText,
       });
     } catch (error) {
       console.error("Error processing lab result:", error);
-      await storage.updateLabResult(labResultId, { status: "error" });
+
+      // Store whatever rawText we were able to extract, even on failure.
+      await storage.updateLabResult(labResultId, {
+        status: "error",
+        rawText: rawText.length > 0 ? rawText : null,
+      });
     }
   }
-
 
   app.delete("/api/lab-results/:id", async (req: Request, res: Response) => {
     try {
@@ -254,6 +301,21 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
+  app.get("/api/medications/:id", async (req: Request, res: Response) => {
+    try {
+      const id = requireIntParam(req, res, "id");
+      if (id === undefined) return;
+
+      const medication = await storage.getMedication(id);
+      if (!medication) return res.status(404).json({ error: "Medication not found" });
+
+      res.json(medication);
+    } catch (error) {
+      console.error("Error fetching medication:", error);
+      res.status(500).json({ error: "Failed to fetch medication" });
+    }
+  });
+
   app.post("/api/medications", async (req: Request, res: Response) => {
     try {
       const parsed = insertMedicationSchema.safeParse(req.body);
@@ -273,9 +335,10 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       const id = requireIntParam(req, res, "id");
       if (id === undefined) return;
 
+      // Avoid passing DB-managed fields (like createdAt) back into Drizzle.
       const updateData: Record<string, unknown> = { ...(req.body as Record<string, unknown>) };
       delete updateData.id;
-      delete updateData.createdAt; // <-- IMPORTANT
+      delete updateData.createdAt;
 
       const medication = await storage.updateMedication(id, updateData);
       if (!medication) return res.status(404).json({ error: "Medication not found" });
@@ -286,7 +349,6 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       res.status(500).json({ error: "Failed to update medication" });
     }
   });
-
 
   app.delete("/api/medications/:id", async (req: Request, res: Response) => {
     try {
@@ -314,6 +376,21 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
+  app.get("/api/supplements/:id", async (req: Request, res: Response) => {
+    try {
+      const id = requireIntParam(req, res, "id");
+      if (id === undefined) return;
+
+      const supplement = await storage.getSupplement(id);
+      if (!supplement) return res.status(404).json({ error: "Supplement not found" });
+
+      res.json(supplement);
+    } catch (error) {
+      console.error("Error fetching supplement:", error);
+      res.status(500).json({ error: "Failed to fetch supplement" });
+    }
+  });
+
   app.post("/api/supplements", async (req: Request, res: Response) => {
     try {
       const parsed = insertSupplementSchema.safeParse(req.body);
@@ -333,9 +410,10 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       const id = requireIntParam(req, res, "id");
       if (id === undefined) return;
 
+      // Avoid passing DB-managed fields (like createdAt) back into Drizzle.
       const updateData: Record<string, unknown> = { ...(req.body as Record<string, unknown>) };
       delete updateData.id;
-      delete updateData.createdAt; // <-- IMPORTANT
+      delete updateData.createdAt;
 
       const supplement = await storage.updateSupplement(id, updateData);
       if (!supplement) return res.status(404).json({ error: "Supplement not found" });
@@ -346,7 +424,6 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       res.status(500).json({ error: "Failed to update supplement" });
     }
   });
-
 
   app.delete("/api/supplements/:id", async (req: Request, res: Response) => {
     try {
@@ -450,7 +527,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
       const interactionResults = await checkInteractions(
         medications.map((m) => ({ id: m.id, name: m.name })),
-        supplements.map((s) => ({ id: s.id, name: s.name }))
+        supplements.map((s) => ({ id: s.id, name: s.name })),
       );
 
       await storage.deleteAllInteractions();
@@ -597,7 +674,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
       const existingDoses = await storage.getPillDosesByDate(date);
       const existingKeys = new Set(
-        existingDoses.map((d) => `${d.pillType}-${d.pillId}-${d.scheduledTimeBlock}`)
+        existingDoses.map((d) => `${d.pillType}-${d.pillId}-${d.scheduledTimeBlock}`),
       );
 
       const medications = (await storage.getMedications()).filter((m) => m.active);
@@ -679,11 +756,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
    * @returns True if required numeric fields are present.
    */
   function computeHealthProfileComplete(hp: HealthProfile): boolean {
-    return (
-      typeof hp.age === "number" &&
-      typeof hp.heightCm === "number" &&
-      typeof hp.weightKg === "number"
-    );
+    return typeof hp.age === "number" && typeof hp.heightCm === "number" && typeof hp.weightKg === "number";
   }
 
   app.get("/api/me", async (_req: Request, res: Response) => {
