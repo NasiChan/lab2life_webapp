@@ -1,115 +1,275 @@
-# 🧬Lab2Life - Personal Health Management Platform
+# 🧬 Lab2Life - Personal Health Management Platform
 
-Lab2Life is a personal health management platform that transforms bloodwork and medical documents into actionable health recommendations 💡.
+**Lab2Life** is an intelligent personal health management platform that transforms bloodwork and medical documents into actionable health recommendations using AI 💡.
+
+> 📌 Created for ElleHacks 2026 in collaboration between Lyanghyeon, Nas, and Deniz.
 
 ---
 
-📌 Note: This project was created for ElleHacks in collaboration between Lyanghyeon, Nas, and Deniz.
+## ⭐ Key Features
 
-## ⭐ Overview
+- **📋 Lab Result Analysis**: Upload PDF/image lab reports → AI extracts health markers instantly
+- **💊 Smart Pill Planner**: Daily & weekly medication/supplement tracking with conflict detection
+- **🤖 AI Recommendations**: Personalized supplement, dietary, and activity guidance
+- **⏰ Intelligent Reminders**: Notifications aligned with user's meal times & wake-up schedule
+- **⚠️ Drug Interaction Checking**: Prevents dangerous medication/supplement combinations
+- **📊 Health Dashboard**: Real-time overview of health metrics, medications, and recommendations
+- **🌙 Dark/Light Mode**: Full theme support with Tailwind CSS variables
 
-**Lab2Life** helps users manage their health by tracking supplements and overall wellness 🩺. Users can upload lab results as a PDF or image 📄, and the app uses Google Gemini to extract key health markers such as vitamins, minerals, and blood values. It then generates personalized supplement 💊, dietary 🥗, and physical activity 🏃‍♀️ recommendations.  
-The platform also supports medication and supplement tracking with reminders ⏰ and drug interaction checking ⚠️.
+---
 
 ## 🏗️ System Architecture
 
-### 🎨 Frontend Architecture
-- **Framework**: React 18 with TypeScript  
-- **Routing**: Wouter (lightweight React router)  
-- **State Management**: TanStack React Query for server state  
-- **UI Components**: shadcn/ui built on Radix UI primitives  
-- **Styling**: Tailwind CSS with CSS variables for theming (light/dark mode support 🌙☀️)  
-- **Build Tool**: Vite with path aliases (@/, @shared/, @assets/)  
+### 🎨 Frontend (Client)
+- **Framework**: React 18 + TypeScript
+- **Router**: Wouter (lightweight & performant)
+- **State Management**: TanStack React Query (server state)
+- **UI Library**: shadcn/ui (Radix UI primitives + Tailwind CSS)
+- **Styling**: Tailwind CSS with CSS variables for dynamic theming
+- **Build Tool**: Vite with TypeScript & path aliases
+- **Pages**: Dashboard, Pill Planner, Lab Results, Medications, Supplements, Reminders, Interactions, Recommendations, Profile
 
-### 🧠 Backend Architecture
-- **Runtime**: Node.js with Express  
-- **Language**: TypeScript with ES modules  
-- **API Pattern**: RESTful JSON API under /api prefix  
-- **File Uploads**: Multer with memory storage for lab result processing  
-- **AI Integration**: Google Gemini via Replit AI Integrations for:
-  - Lab result text extraction and analysis  
-  - Health marker extraction  
-  - Recommendation generation  
-  - Drug interaction checking  
+### 🧠 Backend (Server)
+- **Runtime**: Node.js with Express
+- **Language**: TypeScript (ES modules)
+- **API**: RESTful JSON API under `/api` prefix
+- **File Processing**: Multer for lab result uploads
+- **AI Integration**: Google Gemini API for:
+  - Lab result text extraction
+  - Health marker analysis
+  - Recommendation generation
+  - Drug interaction checking
 
-### 🗄️ Data Layer
-- **Database**: PostgreSQL  
-- **ORM**: Drizzle ORM with drizzle-zod for validation  
-- **Schema Location**: shared/schema.ts (shared between client and server)  
-- **Migrations**: drizzle-kit with migrations in /migrations directory  
+### 🗄️ Database Layer
+- **Database**: PostgreSQL
+- **ORM**: Drizzle ORM with Zod validation
+- **Schema**: Shared between client & server (`shared/schema.ts`)
+- **Migrations**: drizzle-kit managed migrations
 
-### 📊 Key Data Models
-- **Users**: Authentication with username/password  
-- **Lab Results**: Uploaded documents with processing status  
-- **Health Markers**: Extracted values (vitamins, minerals, blood values) with normal ranges  
-- **Medications**: User medications with dosage, frequency, timing, timeBlock, foodRule, separationRules  
-- **Supplements**: User supplements with dosage, timeBlock, foodRule, separationRules  
-- **Recommendations**: AI-generated health recommendations (supplement, dietary, physical)  
-- **Reminders**: Smart notifications ⏰ scheduled using user-defined wake-up and meal times  
-- **Interactions**: Drug/supplement interaction warnings ⚠️  
-- **Pill Stacks**: Groups of pills taken together at specific times  
-- **Pill Doses**: Daily tracking of individual pill doses with status (pending/taken/snoozed)  
+### 📊 Core Data Models
 
-### 📅 Pill Planner Feature
-The Pill Planner (`/planner`) is a mobile-first daily/weekly medication and supplement tracker:
-- **Daily View**: Pills organized by time blocks (Morning, Midday, Evening, Bedtime)  
-- **Weekly View**: Calendar grid showing pill dots for each day/time block  
-- **Dose Tracking**: Mark pills as taken or snooze for later  
-- **Progress Tracking**: Completion percentage for each day 📈  
-- **Conflict Detection**: Visual warnings for separation rules (e.g., Iron + Calcium)  
-- **Food Rules**: Tags indicating whether to take with food 🍽️ or on an empty stomach  
+| Model | Purpose |
+|-------|---------|
+| **Users** | Authentication & profile management |
+| **Lab Results** | Uploaded documents with processing status |
+| **Health Markers** | Extracted values with normal ranges |
+| **Medications** | User meds with dosage, timing, food rules, separation rules |
+| **Supplements** | User supplements with scheduling & interaction data |
+| **Pill Stacks** | Groups of pills taken together at specific times |
+| **Pill Doses** | Daily dose tracking (pending/taken/snoozed) |
+| **Recommendations** | AI-generated supplement, dietary, physical activity guidance |
+| **Reminders** | Smart notifications based on user schedule |
+| **Interactions** | Drug/supplement interaction warnings |
 
-### 🗂️ Project Structure
+### 📅 Pill Planner - Core Feature
 
-### Project Structure
+The Pill Planner is a **mobile-first medication & supplement manager** with:
+
+**Daily View:**
+- Pills organized by time blocks: Morning → Midday → Evening → Bedtime
+- Dosage & frequency per pill
+- "With Food" / "Empty Stomach" indicators
+- Conflict warnings (separation rules)
+- Mark taken / Snooze actions
+
+**Weekly View:**
+- Calendar grid: Days × Time Blocks
+- Visual pill indicators for each slot
+- Pattern recognition (missed doses, patterns)
+- At-a-glance planning for travel & busy periods
+
+---
+
+## 🗂️ Project Structure
+
 ```
-├── client/src/          # React frontend
-│   ├── components/      # UI components (shadcn/ui)
-│   ├── pages/           # Route pages
-│   ├── hooks/           # Custom React hooks
-│   └── lib/             # Utilities and query client
-├── server/              # Express backend
-│   ├── replit_integrations/  # AI integration modules
-│   └── routes.ts        # API route definitions
-├── shared/              # Shared types and schema
-└── migrations/          # Database migrations
+lab2life_webapp/
+├── client/
+│   ├── index.html
+│   └── src/
+│       ├── App.tsx
+│       ├── main.tsx
+│       ├── pages/              # Route pages
+│       │   ├── dashboard.tsx
+│       │   ├── pill-planner.tsx
+│       │   ├── lab-results.tsx
+│       │   ├── medications.tsx
+│       │   ├── supplements.tsx
+│       │   ├── reminders.tsx
+│       │   ├── interactions.tsx
+│       │   ├── recommendations.tsx
+│       │   └── profile.tsx
+│       ├── components/          # UI components
+│       │   ├── app-sidebar.tsx
+│       │   ├── theme-provider.tsx
+│       │   └── ui/             # shadcn/ui components
+│       ├── hooks/              # Custom hooks
+│       │   ├── use-pill-notifs.ts
+│       │   ├── use-reminder-notifs.ts
+│       │   └── use-toast.ts
+│       └── lib/                # Utilities
+│           ├── queryClient.ts
+│           └── utils.ts
+├── server/
+│   ├── index.ts               # Express app entry
+│   ├── routes.ts              # API route definitions
+│   ├── db.ts                  # Database connection
+│   ├── gemini.ts              # Gemini AI integration
+│   ├── seed.ts                # Database seeding
+│   ├── storage.ts             # File storage logic
+│   └── static.ts              # Static file serving
+├── shared/
+│   ├── schema.ts              # Drizzle ORM schema
+│   └── models/
+│       └── chat.ts            # Chat data structures
+├── migrations/                # Database migrations
+├── script/
+│   └── build.ts               # Build configuration
+├── package.json
+├── tsconfig.json
+├── vite.config.ts
+├── drizzle.config.ts
+├── tailwind.config.ts
+└── vercel.json                # Deployment config
 ```
 
+---
 
-### ⚙️ Build System
-- Development: tsx for server, Vite dev server for client  
-- Production: esbuild bundles server to dist/index.cjs, Vite builds client to dist/public  
-- Key dependencies bundled to reduce cold start times 🚀  
+## ⚙️ Build & Deployment
+
+### Development
+```bash
+npm run dev
+```
+- **Client**: Vite dev server with HMR
+- **Server**: tsx with hot reload
+
+### Production Build
+```bash
+npm run build
+```
+- **Server**: Bundled to `dist/index.cjs` (esbuild)
+- **Client**: Built to `dist/public` (Vite)
+- Dependencies bundled to minimize cold starts 🚀
+
+### Deployment
+Project configured for **Vercel** (see `vercel.json`)
+
+---
 
 ## 🔌 External Dependencies
 
-### 🤖 AI Services
-- **Google Gemini** (via Replit AI Integrations): Used for lab result analysis, health marker extraction, recommendation generation, and interaction checking  
+### 🤖 AI Integration
+- **Google Gemini API**: Lab analysis, marker extraction, recommendations, interaction checking
 - Environment variables:
-  - `AI_INTEGRATIONS_GEMINI_API_KEY`  
-  - `AI_INTEGRATIONS_GEMINI_BASE_URL`  
+  - `AI_INTEGRATIONS_GEMINI_API_KEY`
+  - `AI_INTEGRATIONS_GEMINI_BASE_URL`
 
 ### 🛢️ Database
-- **PostgreSQL**: Primary data store  
-- Environment variable: `DATABASE_URL`  
-- Session storage: connect-pg-simple for Express sessions  
+- **PostgreSQL**: Primary data store
+- Environment variable: `DATABASE_URL`
+- Session storage: `connect-pg-simple`
 
-### 📦 Key NPM Packages
-- **@google/genai**: Gemini AI client  
-- **drizzle-orm / drizzle-kit**: Database ORM and migrations  
-- **@tanstack/react-query**: Server state management  
-- **@radix-ui/***: Accessible UI primitives  
-- **react-hook-form + zod**: Form handling with validation  
-- **multer**: File upload handling  
+### 📦 Key Dependencies
+- `@google/generative-ai` - Gemini API client
+- `drizzle-orm` / `drizzle-kit` - Database ORM & migrations
+- `@tanstack/react-query` - Server state management
+- `@radix-ui/*` - Accessible UI primitives
+- `react-hook-form` + `zod` - Form validation
+- `multer` - File uploads
+- `express` - Backend framework
+- `tailwindcss` - Styling
+
+---
 
 ## ✅ Prerequisites
-- A **Google Gemini API Key** 🔑  
-  You can obtain one from **Google AI Studio**.
 
-## 🛠️ Installation
+1. **Node.js**: v18+
+2. **PostgreSQL**: Running database instance
+3. **Google Gemini API Key**: Get from [Google AI Studio](https://ai.google.dev)
 
-1. **Clone the repository**  
-   Clone the files into your project directory:  
-   ```bash
-   git clone <your-repo-url>
-   cd <your-project-folder>
+---
+
+## 🛠️ Installation & Setup
+
+### 1. Clone Repository
+```bash
+git clone https://github.com/NasiChan/lab2life_webapp.git
+cd lab2life_webapp
+```
+
+### 2. Install Dependencies
+```bash
+npm install
+```
+
+### 3. Environment Variables
+Create `.env.local` in the root:
+```env
+# Database
+DATABASE_URL=postgresql://user:password@localhost:5432/lab2life
+
+# AI Services
+AI_INTEGRATIONS_GEMINI_API_KEY=your_gemini_api_key
+AI_INTEGRATIONS_GEMINI_BASE_URL=https://generativelanguage.googleapis.com
+
+# Session (optional)
+SESSION_SECRET=your_secret_key
+```
+
+### 4. Database Setup
+```bash
+# Push schema to database
+npm run db:push
+
+# (Optional) Run migrations
+npm run migrate
+
+# (Optional) Seed sample data
+npm run seed
+```
+
+### 5. Run Development Server
+```bash
+npm run dev
+```
+Access at `http://localhost:5173`
+
+### 6. Production Build
+```bash
+npm run build
+npm start
+```
+
+---
+
+## 🧪 Testing the App
+
+
+
+## 📋 Scripts
+
+```bash
+npm run dev          # Start development server
+npm run build        # Production build
+npm start            # Run production build
+npm run check        # TypeScript type checking
+npm run db:push      # Push schema to database
+npm run migrate      # Run database migrations
+```
+
+---
+
+## 📝 License
+
+MIT License - See LICENSE file for details.
+
+---
+
+## 👥 Authors
+
+- **Lyanghyeon** - UI/UX & frontend
+- **Nas** - Full-stack development
+- **Deniz** - Backend & AI integration
+
+Created for **ElleHacks 2026** 🚀
