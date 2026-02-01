@@ -240,20 +240,24 @@ const rawText = sanitizeForPostgresText(parsed.text) ?? "";
   });
 
   app.patch("/api/medications/:id", async (req: Request, res: Response) => {
-    try {
-      const id = requireIntParam(req, res, "id");
-      if (id === undefined) return;
+  try {
+    const id = requireIntParam(req, res, "id");
+    if (id === undefined) return;
 
-      const medication = await storage.updateMedication(id, req.body);
-      if (!medication) {
-        return res.status(404).json({ error: "Medication not found" });
-      }
-      res.json(medication);
-    } catch (error) {
-      console.error("Error updating medication:", error);
-      res.status(500).json({ error: "Failed to update medication" });
-    }
-  });
+    const updateData: Record<string, unknown> = { ...(req.body as Record<string, unknown>) };
+    delete updateData.id;
+    delete updateData.createdAt; // <-- IMPORTANT
+
+    const medication = await storage.updateMedication(id, updateData);
+    if (!medication) return res.status(404).json({ error: "Medication not found" });
+
+    res.json(medication);
+  } catch (error) {
+    console.error("Error updating medication:", error, "BODY:", req.body);
+    res.status(500).json({ error: "Failed to update medication" });
+  }
+});
+
 
   app.delete("/api/medications/:id", async (req: Request, res: Response) => {
     try {
@@ -296,20 +300,24 @@ const rawText = sanitizeForPostgresText(parsed.text) ?? "";
   });
 
   app.patch("/api/supplements/:id", async (req: Request, res: Response) => {
-    try {
-      const id = requireIntParam(req, res, "id");
-      if (id === undefined) return;
+  try {
+    const id = requireIntParam(req, res, "id");
+    if (id === undefined) return;
 
-      const supplement = await storage.updateSupplement(id, req.body);
-      if (!supplement) {
-        return res.status(404).json({ error: "Supplement not found" });
-      }
-      res.json(supplement);
-    } catch (error) {
-      console.error("Error updating supplement:", error);
-      res.status(500).json({ error: "Failed to update supplement" });
-    }
-  });
+    const updateData: Record<string, unknown> = { ...(req.body as Record<string, unknown>) };
+    delete updateData.id;
+    delete updateData.createdAt; // <-- IMPORTANT
+
+    const supplement = await storage.updateSupplement(id, updateData);
+    if (!supplement) return res.status(404).json({ error: "Supplement not found" });
+
+    res.json(supplement);
+  } catch (error) {
+    console.error("Error updating supplement:", error, "BODY:", req.body);
+    res.status(500).json({ error: "Failed to update supplement" });
+  }
+});
+
 
   app.delete("/api/supplements/:id", async (req: Request, res: Response) => {
     try {
