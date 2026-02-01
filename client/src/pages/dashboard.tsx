@@ -395,25 +395,25 @@ export default function Dashboard() {
             <CardDescription>Common tasks to manage your health</CardDescription>
           </CardHeader>
           <CardContent className="grid gap-3 sm:grid-cols-2">
-            <Button asChild className="h-auto py-4 flex-col gap-2">
+            <Button variant="outline" asChild>
               <Link href="/planner">
                 <Calendar className="h-5 w-5" />
                 <span>Open Pill Planner</span>
               </Link>
             </Button>
-            <Button variant="outline" asChild className="h-auto py-4 flex-col gap-2">
+            <Button variant="outline" asChild>
               <Link href="/lab-results">
                 <FileText className="h-5 w-5" />
                 <span>Upload Lab Results</span>
               </Link>
             </Button>
-            <Button variant="outline" asChild className="h-auto py-4 flex-col gap-2">
+            <Button variant="outline" asChild>
               <Link href="/medications">
                 <Pill className="h-5 w-5" />
                 <span>Add Medication</span>
               </Link>
             </Button>
-            <Button variant="outline" asChild className="h-auto py-4 flex-col gap-2">
+            <Button variant="outline" asChild>
               <Link href="/interactions">
                 <AlertTriangle className="h-5 w-5" />
                 <span>Check Interactions</span>
