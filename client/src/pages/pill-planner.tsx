@@ -24,6 +24,7 @@ import {
   Layers,
 } from "lucide-react";
 import type { Medication, Supplement, PillDose, PillStack } from "@shared/schema";
+import { usePillNotifications } from "@/hooks/use-pill-notifs";
 
 const timeBlocks = [
   { id: "morning", label: "Morning", icon: Sun, time: "6:00 AM - 11:00 AM", color: "bg-amber-100 dark:bg-amber-900/30" },
@@ -440,6 +441,9 @@ export default function PillPlanner() {
     queryKey: ["/api/supplements"],
   });
 
+ 
+  const { snoozePill } = usePillNotifications(medications, supplements);
+
   const { data: doses = [], isLoading: loadingDoses } = useQuery<PillDose[]>({
     queryKey: ["/api/pill-doses", formatDate(selectedDate)],
     queryFn: async () => {
@@ -545,7 +549,18 @@ export default function PillPlanner() {
             supplements={supplements}
             doses={doses}
             onMarkTaken={(id) => updateDoseMutation.mutate({ id, status: "taken" })}
-            onMarkSnoozed={(id) => updateDoseMutation.mutate({ id, status: "snoozed" })}
+            onMarkSnoozed={(id) => {
+              updateDoseMutation.mutate({ id, status: "snoozed" });
+              const dose = doses.find((d) => d.id === id);
+              if (dose) {
+                const pill =
+                  medications.find((m) => m.id === dose.pillId && dose.pillType === "medication") ||
+                  supplements.find((s) => s.id === dose.pillId && dose.pillType === "supplement");
+                if (pill) {
+                  snoozePill(pill.timeBlock || "morning", pill.name);
+                }
+              }
+            }}
             isPending={updateDoseMutation.isPending}
           />
         ) : (
