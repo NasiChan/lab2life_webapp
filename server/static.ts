@@ -14,9 +14,8 @@ export function serveStatic(app: Express) {
 
   // SPA fallback: send index.html for any non-API route
   app.get("*", (req, res) => {
-    if (req.path.startsWith("/api")) {
-      return res.status(404).end();
-    }
-    res.sendFile(path.resolve(distPath, "index.html"));
-  });
+  if (req.path.startsWith("/api")) return res.status(404).end();
+  res.sendFile(path.resolve(distPath, "index.html"));
+});
+
 }
